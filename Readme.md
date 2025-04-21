@@ -1,35 +1,42 @@
-# 👶 Sistema de Análisis de Llanto Infantil
+## InfantCry
 
-Este proyecto es una aplicación interactiva desarrollada en Python usando Streamlit. Permite analizar señales de llanto infantil mediante procesamiento de audio y visualización de parámetros como duración, espectrograma y frecuencia fundamental (F0).
+🎧 Sistema de análisis de llanto infantil para apoyar el tamizaje clínico.  
+Este sistema permite visualizar y analizar características acústicas como duración, segmentos de sonido y silencio, frecuencia fundamental y espectrograma.
 
-## 🚀 Características
+## 📌 Objetivo
 
-- Carga de archivos `.wav`
-- Cálculo de duración de la señal
-- Estimación básica de segmentos de sonido y silencio
-- Extracción de frecuencia fundamental con Praat (vía Parselmouth)
-- Visualización del espectrograma
-- Reproducción del audio desde la interfaz
+Desarrollar una interfaz amigable para el personal médico, que permita la exploración de señales de llanto infantil y sus propiedades acústicas, utilizando herramientas como `librosa`, `matplotlib` y `Praat` mediante `parselmouth`.
 
-## 📁 Estructura del proyecto
+## 🛠️ Tecnologías utilizadas
+- [Python 3.x](https://www.python.org/)
+- [Streamlit](https://streamlit.io/)
+- [NumPy](https://numpy.org/)
+- [Matplotlib](https://matplotlib.org/)
+- [Librosa](https://librosa.org/)
+- [Praat-parselmouth](https://github.com/YannickJadoul/Parselmouth)
 
-
-## 🛠️ Instalación
-
+## ⚙️ Instalación
 1. Clona el repositorio:
+
    ```bash
-   git clone https://github.com/tu_usuario/analisis-llanto-infantil.git
-   cd analisis-llanto-infantil
-
-2. Crea un entorno virtual
-python -m venv venv
-.\venv\Scripts\activate  # en Windows
-
-3. Instala dependencias
-pip install -r requirements.txt
-
-4. Ejecuta la aplicación
-streamlit run app.py
+   git clone https://github.com/maryan-rdiaz/InfantCry.git
+   cd InfantCry
+2. Crea y activa un entorno virtual (opcional pero recomendado):
+   python -m venv venv
+   .\venv\Scripts\activate  # En Windows
+3. Instala las dependencias
+   pip install -r requeriments.txt
+4. Ejecución: streamlit run app.py
+   La aplicación se abrirá en tu navegador en http://localhost:8501.
+   
+## 📁 Estructura del proyecto
+InfantCry/
+│
+├── app.py                  # Código principal de la app Streamlit
+├── requeriments.txt        # Lista de dependencias
+├── README.md               # Este archivo
+├── venv/                   # Entorno virtual (no subir a GitHub)
+└── data/                   # Carpeta opcional para guardar audios o resultados
 
 ## Ejemplo de uso
 
