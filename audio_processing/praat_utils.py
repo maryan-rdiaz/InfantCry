@@ -21,8 +21,26 @@ def graficar_espectrograma_praat(snd, max_freq=5000):
 
 def obtener_frecuencia_fundamental(snd):
     pitch = snd.to_pitch()
-    pitch_values = pitch.selected_array['frequency']
-    pitch_values = pitch_values[pitch_values > 0]
-    if len(pitch_values) > 0:
-        return np.median(pitch_values)
-    return None
+    f0_values = pitch.selected_array['frequency']
+    f0_values = f0_values[f0_values != 0]  # Excluir silencios (F0 = 0)
+
+    if len(f0_values) == 0:
+        return None, None, None, (None, None)
+
+    f0_mean = np.mean(f0_values)
+    f0_min = np.min(f0_values)
+    f0_max = np.max(f0_values)
+    times = pitch.xs()
+    curve = pitch.selected_array['frequency']
+
+    return f0_mean, f0_min, f0_max, (times, curve)
+
+def calcular_jitter_shimmer(snd):
+    
+    point_process = parselmouth.praat.call(snd, "To PointProcess (periodic, cc)", 75, 500)
+
+    jitter_local = parselmouth.praat.call(point_process, "Get jitter (local)", 0, 0, 0.0001, 0.02, 1.3)
+    shimmer_local = parselmouth.praat.call([snd, point_process], "Get shimmer (local)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+
+    return jitter_local, shimmer_local
+

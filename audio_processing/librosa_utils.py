@@ -18,4 +18,10 @@ def graficar_espectrograma_librosa(y, sr):
     plt.colorbar(img, ax=ax, format="%+2.0f dB")
     return fig
 
+def calcular_zcr(y):
+    # Calcular la tasa de cruces por cero (ZCR)
+    zcr = librosa.feature.zero_crossing_rate(y)[0]
+    return zcr
+
+
 

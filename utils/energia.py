@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import numpy as np
    
-def graficar_energia(y, sr, energia, umbral_db=-30):
+def graficar_energia(y, sr, energia, umbral_db):
    
     # Convertir energía RMS a decibeles
     energia_db = 10 * np.log10(np.maximum(energia, 1e-10))
