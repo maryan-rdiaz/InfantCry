@@ -33,7 +33,7 @@ def graficar_espectrograma_praat_interactivo(snd, max_freq=5000):
     return fig
 
 
-def graficar_curva_f1(times, f0_curve):
+def graficar_curva_f0(times, f0_curve):
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
@@ -54,56 +54,24 @@ def graficar_curva_f1(times, f0_curve):
 
     return fig
 
+def graficar_zcr(y, sr):
+    """Genera la visualización del Zero-Crossing Rate (ZCR)."""
+    zcr = calcular_zcr(y)  # Usamos la función de librosa_utils.py para calcular ZCR
 
-def graficar_curva_f0(f0_times, f0_curve):
-    fig = go.Figure()
+    # Convertir a tiempo (en segundos)
+    frames = range(len(zcr))
+    t = librosa.frames_to_time(frames, sr=sr)
 
-    # Línea principal de F0
-    fig.add_trace(go.Scatter(
-        x=f0_times, y=f0_curve,
-        mode='lines',
-        name='F0',
-        line=dict(color='blue')
-    ))
+    # Crear la gráfica
+    fig, ax = plt.subplots()
+    ax.plot(t, zcr, label='Zero-Crossing Rate', color='b')
+    ax.set_xlabel('Tiempo (s)')
+    ax.set_ylabel('ZCR')
+    ax.set_title('Tasa de Cruces por Cero (ZCR) a lo largo del tiempo')
+    ax.legend()
+    plt.grid(True)
 
-    # Obtener índices del valor mínimo y máximo (ignorando ceros o None)
-    f0_array = np.array(f0_curve)
-    valid_idx = np.where((f0_array > 0) & ~np.isnan(f0_array))[0]
-
-    if valid_idx.size > 0:
-        min_idx = valid_idx[np.argmin(f0_array[valid_idx])]
-        max_idx = valid_idx[np.argmax(f0_array[valid_idx])]
-
-        # Punto mínimo
-        fig.add_trace(go.Scatter(
-            x=[f0_times[min_idx]],
-            y=[f0_curve[min_idx]],
-            mode='markers+text',
-            name='Mínimo',
-            marker=dict(color='green', size=10),
-            text=[f"{f0_curve[min_idx]:.2f} Hz"],
-            textposition="top center"
-        ))
-
-        # Punto máximo
-        fig.add_trace(go.Scatter(
-            x=[f0_times[max_idx]],
-            y=[f0_curve[max_idx]],
-            mode='markers+text',
-            name='Máximo',
-            marker=dict(color='red', size=10),
-            text=[f"{f0_curve[max_idx]:.2f} Hz"],
-            textposition="top center"
-        ))
-
-    fig.update_layout(
-        title="Curva de Frecuencia Fundamental (F0)",
-        xaxis_title="Tiempo (s)",
-        yaxis_title="F0 (Hz)",
-        template="simple_white"
-    )
     return fig
-
 
 def graficar_zcr_plotly(y, sr, frame_length=2048, hop_length=512):
     zcr = librosa.feature.zero_crossing_rate(y, frame_length=frame_length, hop_length=hop_length)[0]
