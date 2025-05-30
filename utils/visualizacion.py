@@ -1,18 +1,39 @@
 import numpy as np
 import plotly.graph_objects as go
-import plotly.graph_objs as go
 import matplotlib.pyplot as plt
 import librosa
 from audio_processing.librosa_utils import calcular_zcr
+import os
 
-def graficar_espectrograma_praat_interactivo(snd, max_freq=5000):
-    """Genera un espectrograma interactivo a partir de un sonido Parselmouth usando Plotly."""
+def graficar_espectrograma_praat_interactivo(snd, max_freq=5000, max_points=200_000, guardar_como=None):
+    """
+    Genera un espectrograma interactivo reduciendo datos si es necesario.
+    Si se indica `guardar_como`, guarda los datos completos del espectrograma en .npz.
+    """
     spectrogram = snd.to_spectrogram(window_length=0.025, maximum_frequency=max_freq)
     spectrogram_db = 10 * np.log10(np.maximum(spectrogram.values, 1e-10))
 
     tiempo = np.linspace(0, snd.get_total_duration(), spectrogram_db.shape[1])
     frecuencia = np.linspace(0, max_freq, spectrogram_db.shape[0])
 
+    # Guardar datos completos si se solicita
+    if guardar_como:
+        np.savez_compressed(guardar_como,
+                            espectrograma=spectrogram_db,
+                            tiempo=tiempo,
+                            frecuencia=frecuencia)
+        print(f"Datos guardados en: {guardar_como}.npz")
+
+    # Reducir puntos solo para la visualización
+    total_points = spectrogram_db.size
+    if total_points > max_points:
+        factor_x = int(np.ceil(spectrogram_db.shape[1] / np.sqrt(max_points)))
+        factor_y = int(np.ceil(spectrogram_db.shape[0] / np.sqrt(max_points)))
+        spectrogram_db = spectrogram_db[::factor_y, ::factor_x]
+        tiempo = tiempo[::factor_x]
+        frecuencia = frecuencia[::factor_y]
+
+    # Gráfica interactiva
     fig = go.Figure(data=go.Heatmap(
         z=spectrogram_db,
         x=tiempo,
@@ -32,77 +53,87 @@ def graficar_espectrograma_praat_interactivo(snd, max_freq=5000):
 
     return fig
 
+def graficar_curva_f0(f0_times, f0_curve, f0_min_valid=200, f0_max_valid=1000):
+    """Genera una gráfica interactiva de F0 mostrando solo puntos válidos (250–600 Hz),
+    marca los valores mínimo y máximo, y añade líneas guía para el rango típico de llanto."""
+    
+    # Convertir a arrays
+    times_arr = np.array(f0_times)
+    f0_arr = np.array(f0_curve)
 
-def graficar_curva_f1(times, f0_curve):
+    # Rango típico del llanto
+    f0_min_llanto = 250
+    f0_max_llanto = 600
+
+    # Filtrar valores dentro del rango válido general
+    mask = (f0_arr >= f0_min_valid) & (f0_arr <= f0_max_valid) & ~np.isnan(f0_arr)
+    times_validos = times_arr[mask]
+    f0_validos = f0_arr[mask]
+
     fig = go.Figure()
 
+    # Puntos válidos
     fig.add_trace(go.Scatter(
-        x=times,
-        y=f0_curve,
-        mode='lines',
+        x=times_validos,
+        y=f0_validos,
+        mode='markers',
         name='F0 (Hz)',
-        line=dict(color='royalblue')
+        marker=dict(color='royalblue', size=6, symbol='circle')
     ))
 
-    fig.update_layout(
-        title="Curva de Frecuencia Fundamental (F0)",
-        xaxis_title="Tiempo (s)",
-        yaxis_title="Frecuencia (Hz)",
-        height=400,
-        margin=dict(l=40, r=40, t=40, b=40)
-    )
-
-    return fig
-
-
-def graficar_curva_f0(f0_times, f0_curve):
-    fig = go.Figure()
-
-    # Línea principal de F0
+    # Líneas de referencia (estáticas, no dependen de f0_validos)
     fig.add_trace(go.Scatter(
-        x=f0_times, y=f0_curve,
-        mode='lines',
-        name='F0',
-        line=dict(color='blue')
+        x=[times_arr.min(), times_arr.max()],
+        y=[f0_max_llanto, f0_max_llanto],
+        mode="lines",
+        name="Límite superior (600 Hz)",
+        line=dict(color="orange", dash="dash")
     ))
 
-    # Obtener índices del valor mínimo y máximo (ignorando ceros o None)
-    f0_array = np.array(f0_curve)
-    valid_idx = np.where((f0_array > 0) & ~np.isnan(f0_array))[0]
+    fig.add_trace(go.Scatter(
+        x=[times_arr.min(), times_arr.max()],
+        y=[f0_min_llanto, f0_min_llanto],
+        mode="lines",
+        name="Límite inferior (250 Hz)",
+        line=dict(color="lightgreen", dash="dash")
+    ))
 
-    if valid_idx.size > 0:
-        min_idx = valid_idx[np.argmin(f0_array[valid_idx])]
-        max_idx = valid_idx[np.argmax(f0_array[valid_idx])]
+    # Marcar mínimo y máximo si hay datos
+    if len(f0_validos) > 0:
+        min_idx = np.argmin(f0_validos)
+        max_idx = np.argmax(f0_validos)
 
-        # Punto mínimo
         fig.add_trace(go.Scatter(
-            x=[f0_times[min_idx]],
-            y=[f0_curve[min_idx]],
+            x=[times_validos[min_idx]],
+            y=[f0_validos[min_idx]],
             mode='markers+text',
             name='Mínimo',
             marker=dict(color='green', size=10),
-            text=[f"{f0_curve[min_idx]:.2f} Hz"],
+            text=[f"{f0_validos[min_idx]:.2f} Hz"],
             textposition="top center"
         ))
 
-        # Punto máximo
         fig.add_trace(go.Scatter(
-            x=[f0_times[max_idx]],
-            y=[f0_curve[max_idx]],
+            x=[times_validos[max_idx]],
+            y=[f0_validos[max_idx]],
             mode='markers+text',
             name='Máximo',
             marker=dict(color='red', size=10),
-            text=[f"{f0_curve[max_idx]:.2f} Hz"],
-            textposition="top center"
+            text=[f"{f0_validos[max_idx]:.2f} Hz"],
+            textposition="bottom center"
         ))
 
     fig.update_layout(
         title="Curva de Frecuencia Fundamental (F0)",
         xaxis_title="Tiempo (s)",
         yaxis_title="F0 (Hz)",
-        template="simple_white"
+        template="simple_white",
+        height=400,
+        margin=dict(l=40, r=40, t=40, b=40),
+        showlegend=True
     )
-    return fig
+
+    return fig, times_validos, f0_validos
 
 
 def graficar_zcr_plotly(y, sr, frame_length=2048, hop_length=512):

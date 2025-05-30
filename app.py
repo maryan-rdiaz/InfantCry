@@ -1,20 +1,25 @@
 import streamlit as st
 import tempfile
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import librosa
 import numpy as np
+import pandas as pd
+import io
+import base64
+
 
 # ------------- Importacion de funciones personalizadas ----------------
 from audio_processing.librosa_utils import (
     cargar_audio_desde_bytes,
     calcular_duracion,
-    graficar_espectrograma_librosa,
+    #graficar_espectrograma_librosa,
     calcular_zcr,
 )
 
 from audio_processing.praat_utils import (
     cargar_sonido_praat,
-    graficar_espectrograma_praat,
+    #graficar_espectrograma_praat,
     obtener_frecuencia_fundamental,
     calcular_jitter_shimmer,
 )
@@ -38,12 +43,14 @@ st.set_page_config(page_title="Análisis de Llanto Infantil", layout="wide")
 
 # -----------------------------Menú lateral ---------------------------------
 st.sidebar.title("🔍 Opciones de Análisis")
-mostrar_info_general = st.sidebar.checkbox("📄 Información General")
-mostrar_espectrograma = st.sidebar.checkbox("🎛️ Espectrograma")
-mostrar_f0 = st.sidebar.checkbox("📈 Frecuencia Fundamental")
-mostrar_jitter_shimmer = st.sidebar.checkbox("📉 Jitter y Shimmer")
-mostrar_zcr = st.sidebar.checkbox("📊 Zero-Crossing Rate")
-mostrar_llanto = st.sidebar.checkbox("🧠 Detección de Llanto")
+
+mostrar_todos = st.sidebar.checkbox("✅ Mostrar todos")
+mostrar_info_general = st.sidebar.checkbox("📄 Información General", value=mostrar_todos, disabled=mostrar_todos)
+mostrar_espectrograma = st.sidebar.checkbox("🎛️ Espectrograma", value=mostrar_todos, disabled=mostrar_todos)
+mostrar_f0 = st.sidebar.checkbox("📈 Frecuencia Fundamental", value=mostrar_todos, disabled=mostrar_todos)
+mostrar_jitter_shimmer = st.sidebar.checkbox("📉 Jitter y Shimmer", value=mostrar_todos, disabled=mostrar_todos)
+mostrar_zcr = st.sidebar.checkbox("📊 Zero-Crossing Rate", value=mostrar_todos, disabled=mostrar_todos)
+mostrar_llanto = st.sidebar.checkbox("🧠 Detección de Llanto", value=mostrar_todos, disabled=mostrar_todos)
 
 st.title("👶 Análisis de Llanto Infantil")
 # Cargar el archivo .wav
@@ -96,8 +103,32 @@ if archivo_audio is not None:
             tmp_file.write(audio_bytes)
             tmp_path = tmp_file.name
         snd = cargar_sonido_praat(tmp_path)
-        fig3 = graficar_espectrograma_praat_interactivo(snd)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".npz") as tmp_file:
+            ruta_npz = tmp_file.name
+        fig3 = graficar_espectrograma_praat_interactivo(snd, max_freq=5000, guardar_como=ruta_npz)
         st.plotly_chart(fig3, use_container_width=True)
+        # Leer el contenido del archivo para la descarga
+        with open(ruta_npz, "rb") as f:
+            bytes_npz = f.read()
+
+        # Codificar el archivo .npz a base64
+        b64_npz = base64.b64encode(bytes_npz).decode()
+
+        # Crear botón HTML
+        st.markdown(
+            f"""
+            <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                <a href="data:application/octet-stream;base64,{b64_npz}" download="espectrograma.npz">
+                    <button style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                        ⬇️ Descargar datos del espectrograma (.npz)
+                    </button>
+                </a>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
 
     if mostrar_f0:
         st.markdown("#### 📈 Frecuencia Fundamental")  # Puedes usar ##, ###, #### para ajustar el tamaño
@@ -107,13 +138,24 @@ if archivo_audio is not None:
                  el tono percibido del llanto. Está relacionada con la vibración de las cuerdas vocales del bebé.
 
                 \nAlteraciones en la F0 pueden reflejar cambios en el estado neurológico o fisiológico del bebé. 
-                Por ejemplo, una F0 muy alta o muy baja, o una F0 inestable, pueden estar asociadas con 
-                condiciones como dolor, problemas respiratorios o afecciones neurológicas.
+                \nEl rango típico de la frecuencia fundamental (F0) del llanto de un bebé suele encontrarse entre: 250Hz y 600 Hz.
+                \nAunque este rango puede variar dependiendo de:
+                \n\tEdad gestacional: Los bebés prematuros tienden a tener F0 más altas.
+                \n\tEstado emocional o fisiológico: El llanto por dolor, hambre o incomodidad puede elevar la F0.
+                \n\tPatologías: Algunas condiciones neurológicas o respiratorias pueden alterar significativamente el patrón y la F0.
+                \nRangos más específicos reportados en estudios:
+                \nLlantos normales: 
+                \n\tF0 promedio: entre 400 y 500 Hz
+                \n\tF0 mínima: alrededor de 250 Hz
+                \n\tF0 máxima: puede alcanzar hasta 700 Hz o incluso más en episodios agudos.
+                \nLlantos patológicos (como en encefalopatías o síndromes genéticos):
+                \n\tPueden mostrar F0 muy elevadas (> 800 Hz) o patrones inusuales
                 """)
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
                 tmp_file.write(audio_bytes)
                 tmp_path = tmp_file.name
+            
             snd = cargar_sonido_praat(tmp_path)
             f0_mean, f0_min, f0_max, (f0_times, f0_curve) = obtener_frecuencia_fundamental(snd)
             if f0_mean is not None:
@@ -124,8 +166,40 @@ if archivo_audio is not None:
                     st.write(f"🟡 **Media:** {f0_mean:.2f} Hz")
                 with col3:
                     st.write(f"🔴 **Máxima:** {f0_max:.2f} Hz")
-                fig_f0 = graficar_curva_f0(f0_times, f0_curve)
+
+                # Usar la función actualizada que retorna también los valores válidos
+                fig_f0, times_validos, f0_validos = graficar_curva_f0(f0_times, f0_curve)
+                print(type(fig_f0))
+
                 st.plotly_chart(fig_f0, use_container_width=True)
+
+                # Crear DataFrame solo con valores filtrados
+                df_f0 = pd.DataFrame({
+                    'Tiempo (s)': times_validos,
+                    'F0 (Hz)': f0_validos
+                })
+
+                # CSV en memoria para descarga
+                csv_buffer = io.StringIO()
+                df_f0.to_csv(csv_buffer, index=False)
+                csv_data = csv_buffer.getvalue()
+
+                # Escapar los caracteres especiales antes de usar en f-string
+                csv_data_encoded = csv_data.replace('\n', '%0A').replace(',', '%2C')
+
+                # Botón de descarga alineado a la derecha
+                st.markdown(
+                    f"""
+                    <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                        <a href="data:text/csv;charset=utf-8,{csv_data_encoded}" download="f0_datos.csv">
+                            <button style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                                📥 Descargar F0 (CSV)
+                            </button>
+                        </a>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
                 st.warning("No se pudo detectar la frecuencia fundamental.")
         except Exception as e:

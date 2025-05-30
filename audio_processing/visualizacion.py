@@ -39,9 +39,9 @@ def graficar_curva_f0(times, f0_curve):
     fig.add_trace(go.Scatter(
         x=times,
         y=f0_curve,
-        mode='lines',
+        mode='markers',
         name='F0 (Hz)',
-        line=dict(color='royalblue')
+        marker=dict(color='royalblue', size=6, symbol='circle')
     ))
 
     fig.update_layout(
