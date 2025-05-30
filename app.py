@@ -65,7 +65,10 @@ if archivo_audio is not None:
     st.audio(archivo_audio, format="audio/wav")
 
     if mostrar_info_general:
-        st.markdown("#### 📄 Información General")
+        st.markdown(
+            "<h4 style='text-align: center;'>📄 Información General</h4>",
+            unsafe_allow_html=True
+        )
         st.write(f"🕒 **Duración:** {duracion:.2f} segundos")
         minutos = int(duracion // 60)
         segundos = int(duracion % 60)
@@ -83,7 +86,10 @@ if archivo_audio is not None:
         st.write(f"⚖️ **Offset DC (valor medio):** {np.mean(y):.5f}")
 
     if mostrar_espectrograma:
-        st.markdown("#### 🎛️ Espectrograma")
+        st.markdown(
+            "<h4 style='text-align: center;'>🎛️ Espectrograma</h4>",
+            unsafe_allow_html=True
+        )
         with st.expander("ℹ️ "):
             st.write(""" Un espectrograma es una representación visual de cómo varían las frecuencias de una 
                 señal de audio a lo largo del tiempo. En el eje horizontal se muestra el tiempo, en el vertical
@@ -112,26 +118,20 @@ if archivo_audio is not None:
         with open(ruta_npz, "rb") as f:
             bytes_npz = f.read()
 
-        # Codificar el archivo .npz a base64
-        b64_npz = base64.b64encode(bytes_npz).decode()
-
-        # Crear botón HTML
+        # Botón de descarga
+        st.download_button(
+            label="⬇️ Descargar datos del espectrograma (.npz)",
+            data=bytes_npz,
+            file_name="espectrograma.npz",
+            mime="application/octet-stream"
+        )
+    
+    if mostrar_f0:
         st.markdown(
-            f"""
-            <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-                <a href="data:application/octet-stream;base64,{b64_npz}" download="espectrograma.npz">
-                    <button style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
-                        ⬇️ Descargar datos del espectrograma (.npz)
-                    </button>
-                </a>
-            </div>
-            """,
+            "<h4 style='text-align: center;'>📈 Frecuencia Fundamental</h4>",
             unsafe_allow_html=True
         )
 
-
-    if mostrar_f0:
-        st.markdown("#### 📈 Frecuencia Fundamental")  # Puedes usar ##, ###, #### para ajustar el tamaño
         with st.expander("ℹ️ "):
             st.write("""
                 La frecuencia fundamental (F0) es la frecuencia más baja de una señal periódica y representa
@@ -206,7 +206,10 @@ if archivo_audio is not None:
             st.error(f"⚠️ Error: {e}")
 
     if mostrar_jitter_shimmer:
-        st.markdown("#### 📈 Jitter y Shimmer")  # Puedes usar ##, ###, #### para ajustar el tamaño
+        st.markdown(
+            "<h4 style='text-align: center;'>📈 Jitter y Shimmer</h4>",
+            unsafe_allow_html=True
+        )
         with st.expander("ℹ️ "):
             st.write("""
                 🔸 Jitter mide la variación ciclo a ciclo en la frecuencia fundamental, es decir, la estabilidad 
@@ -243,7 +246,10 @@ if archivo_audio is not None:
             st.error(f"⚠️ Error: {e}")
 
     if mostrar_zcr:
-        st.markdown("#### 📊 Tasa de Cruce por Cero")  # Puedes usar ##, ###, #### para ajustar el tamaño
+        st.markdown(
+            "<h4 style='text-align: center;'>📊 Tasa de Cruce por Cero</h4>",
+            unsafe_allow_html=True
+        )
         with st.expander("ℹ️ "):
             st.write("""
                 La tasa de cruce por cero (ZCR) representa cuántas veces la señal de audio cruza el eje cero 
@@ -269,9 +275,11 @@ if archivo_audio is not None:
         st.plotly_chart(fig_zcr, use_container_width=True)
         
     if mostrar_llanto:
-        st.subheader("🧠 Detección de Llanto (en desarrollo)")
-        # Aquí puedes incorporar lógica futura
-
+        st.markdown(
+            "<h4 style='text-align: center;'>🧠 Detección de Llanto (en desarrollo)</h4>",
+            unsafe_allow_html=True
+        )
+        
 else:
     st.warning("Por favor, sube una muestra de llanto en formato .wav para comenzar.")
 
