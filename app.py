@@ -23,6 +23,9 @@ from audio_processing.praat_utils import (
     obtener_frecuencia_fundamental,
     calcular_jitter_shimmer,
 )
+from audio_processing.yamnet_filter import (
+    filtrar_llanto_yamnet,
+)
 
 from audio_processing.cry_detection import (
     detectar_llanto,
@@ -50,7 +53,7 @@ mostrar_espectrograma = st.sidebar.checkbox("🎛️ Espectrograma", value=mostr
 mostrar_f0 = st.sidebar.checkbox("📈 Frecuencia Fundamental", value=mostrar_todos, disabled=mostrar_todos)
 mostrar_jitter_shimmer = st.sidebar.checkbox("📉 Jitter y Shimmer", value=mostrar_todos, disabled=mostrar_todos)
 mostrar_zcr = st.sidebar.checkbox("📊 Zero-Crossing Rate", value=mostrar_todos, disabled=mostrar_todos)
-mostrar_llanto = st.sidebar.checkbox("🧠 Detección de Llanto", value=mostrar_todos, disabled=mostrar_todos)
+mostrar_llanto = st.sidebar.checkbox("🎚️ Filtrado con YAMNet", value=mostrar_todos, disabled=mostrar_todos)
 
 st.title("👶 Análisis de Llanto Infantil")
 # Cargar el archivo .wav
@@ -131,7 +134,6 @@ if archivo_audio is not None:
             "<h4 style='text-align: center;'>📈 Frecuencia Fundamental</h4>",
             unsafe_allow_html=True
         )
-
         with st.expander("ℹ️ "):
             st.write("""
                 La frecuencia fundamental (F0) es la frecuencia más baja de una señal periódica y representa
@@ -276,10 +278,38 @@ if archivo_audio is not None:
         
     if mostrar_llanto:
         st.markdown(
-            "<h4 style='text-align: center;'>🧠 Detección de Llanto (en desarrollo)</h4>",
+            "<h4 style='text-align: center;'>🍼 Detección y Filtrado de Llanto (YAMNet)</h4>",
             unsafe_allow_html=True
         )
-        
+
+        threshold = st.slider("🎚️ Umbral de detección (confianza mínima)", 0.0, 1.0, 0.3, 0.05)
+
+        with st.spinner("🔎 Analizando llanto con YAMNet..."):
+            resultado = filtrar_llanto_yamnet(audio_bytes, threshold=threshold)
+
+        if resultado is not None:
+            audio_filtrado_bytes, sr_filtrado, segmentos = resultado
+
+            st.success(f"✅ Se detectaron {len(segmentos)} segmento(s) de llanto.")
+            st.audio(audio_filtrado_bytes, format="audio/wav", start_time=0)
+
+            # Botón para descargar señal filtrada
+            st.download_button(
+                label="⬇️ Descargar audio filtrado (solo llanto)",
+                data=audio_filtrado_bytes,
+                file_name="llanto_filtrado.wav",
+                mime="audio/wav"
+            )
+
+            # Mostrar intervalo de tiempo de cada segmento
+            st.markdown("### ⏱️ Segmentos detectados:")
+            for i, (start, end) in enumerate(segmentos):
+                inicio_seg = start / sr_filtrado
+                fin_seg = end / sr_filtrado
+                st.write(f"🍼 Segmento {i+1}: {inicio_seg:.2f}s - {fin_seg:.2f}s")
+
+        else:
+            st.warning("⚠️ No se detectaron segmentos de llanto con el umbral seleccionado.")
 else:
     st.warning("Por favor, sube una muestra de llanto en formato .wav para comenzar.")
 
